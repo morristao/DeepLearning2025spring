@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Grid Map</title>
+    <style>
+        table {
+            border-collapse: collapse;
+        }
+
+        td {
+            width: 40px;
+            height: 40px;
+            text-align: center;
+            vertical-align: middle;
+            border: 1px solid #000;
+            background-color: white;
+            font-size: 16px;
+        }
+
+        .start {
+            background-color: green;
+            color: white;
+        }
+
+        .end {
+            background-color: red;
+            color: white;
+        }
+
+        .obstacle {
+            background-color: gray;
+            color: white;
+        }
+
+        .title {
+            margin-top: 30px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Grid Map (n x n)</h2>
+    <label>Grid Size (5-9):</label>
+    <input type="number" id="grid-size" min="5" max="9" value="{{ n }}">
+    <button onclick="setGrid()">Set Grid</button>
+    <p>Click to select: Start → End → (n-2) Obstacles</p>
+
+    <div class="title">Policy Matrix</div>
+    <div id="policy-container"></div>
+
+    <div class="title">Value Matrix</div>
+    <div id="value-container"></div>
+
+    <script>
+        let n = {{ n | tojson }};
+
+        function renderPolicyMatrix(state) {
+            const size = state.size || n;
+            let container = document.getElementById('policy-container');
+            let table = '<table>';
+            for (let i = 0; i < size; i++) {
+                table += '<tr>';
+                for (let j = 0; j < size; j++) {
+                    let cls = '';
+                    if (state.start && state.start[0] === i && state.start[1] === j) cls = 'start';
+                    else if (state.end && state.end[0] === i && state.end[1] === j) cls = 'end';
+                    else if (state.obstacles && state.obstacles.some(o => o[0] === i && o[1] === j)) cls = 'obstacle';
+
+                    let arrow = state.policy ? state.policy[i][j] : '';
+                    table += `<td class="${cls}" onclick="clickCell(${i}, ${j})">${arrow}</td>`;
+                }
+                table += '</tr>';
+            }
+            table += '</table>';
+            container.innerHTML = table;
+        }
+
+        function renderValueMatrix(state) {
+            const size = state.size || n;
+            let container = document.getElementById('value-container');
+            let table = '<table>';
+            for (let i = 0; i < size; i++) {
+                table += '<tr>';
+                for (let j = 0; j < size; j++) {
+                    let cls = '';
+                    if (state.start && state.start[0] === i && state.start[1] === j) cls = 'start';
+                    else if (state.end && state.end[0] === i && state.end[1] === j) cls = 'end';
+                    else if (state.obstacles && state.obstacles.some(o => o[0] === i && o[1] === j)) cls = 'obstacle';
+
+                    let val = state.value ? state.value[i][j].toFixed(2) : '';
+                    table += `<td class="${cls}" onclick="clickCell(${i}, ${j})">${val}</td>`;
+                }
+                table += '</tr>';
+            }
+            table += '</table>';
+            container.innerHTML = table;
+        }
+
+        function setGrid() {
+            n = parseInt(document.getElementById('grid-size').value);
+            fetch('/set_size', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ size: n })
+            }).then(() => getState());
+        }
+
+        function clickCell(i, j) {
+            fetch('/click_cell', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ row: i, col: j })
+            }).then(() => getState());
+        }
+
+        function getState() {
+            fetch('/get_state')
+                .then(res => res.json())
+                .then(data => {
+                    n = data.size;
+                    renderPolicyMatrix(data);
+                    renderValueMatrix(data);
+                });
+        }
+
+        window.onload = getState;
+    </script>
+</body>
+
+</html>
+
+

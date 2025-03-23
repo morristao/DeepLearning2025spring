@@ -1,0 +1,10 @@
+version: '3.4'
+
+services:
+  deeplearning2025spring:
+    image: deeplearning2025spring
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 5000:5000
