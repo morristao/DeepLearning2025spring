@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Grid Map - Value Iteration</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        td {
+            width: 40px;
+            height: 40px;
+            text-align: center;
+            vertical-align: middle;
+            border: 1px solid #000;
+            background-color: white;
+            font-size: 16px;
+        }
+
+        .start {
+            background-color: green;
+            color: white;
+        }
+
+        .end {
+            background-color: red;
+            color: white;
+        }
+
+        .obstacle {
+            background-color: gray;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h2>Grid Map (n x n)</h2>
+    <label>Grid Size (5-9):</label>
+    <input type="number" id="grid-size" min="5" max="9" value="{{ n }}">
+    <button onclick="setGrid()">Set Grid</button>
+    <button onclick="computePolicy()">Compute Optimal Policy</button>
+    <p>Click to select: Start → End → (n-2) Obstacles</p>
+
+    <h3>Policy Matrix</h3>
+    <div id="policy-matrix"></div>
+
+    <h3>Value Matrix</h3>
+    <div id="value-matrix"></div>
+
+    <script>
+        let n = {{ n | tojson }};
+
+        function renderMatrices(policy, value, state) {
+            const policyDiv = document.getElementById('policy-matrix');
+            const valueDiv = document.getElementById('value-matrix');
+            policyDiv.innerHTML = generateTable(policy, state, true);
+            valueDiv.innerHTML = generateTable(value, state, false);
+        }
+
+        function generateTable(matrix, state, isPolicy) {
+            let table = '<table>';
+            for (let i = 0; i < n; i++) {
+                table += '<tr>';
+                for (let j = 0; j < n; j++) {
+                    let cls = '';
+                    if (state.start && state.start[0] === i && state.start[1] === j) cls = 'start';
+                    else if (state.end && state.end[0] === i && state.end[1] === j) cls = 'end';
+                    else if (state.obstacles && state.obstacles.some(o => o[0] === i && o[1] === j)) cls = 'obstacle';
+
+                    let content = isPolicy ? matrix[i][j] : matrix[i][j].toFixed(2);
+                    table += `<td class="${cls}" onclick="clickCell(${i}, ${j})">${content}</td>`;
+                }
+                table += '</tr>';
+            }
+            table += '</table>';
+            return table;
+        }
+
+        function getState() {
+            fetch('/get_state')
+                .then(res => res.json())
+                .then(data => {
+                    n = data.size;  // 不再使用 let，避免重複宣告
+                    renderMatrices(data.policy, data.value, data);
+                });
+        }
+
+        function setGrid() {
+            const size = parseInt(document.getElementById('grid-size').value);
+            fetch('/set_size', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ size: size })
+            }).then(() => getState());
+        }
+
+        function clickCell(i, j) {
+            fetch('/click_cell', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ row: i, col: j })
+            }).then(() => getState());
+        }
+
+        function computePolicy() {
+            fetch('/compute_policy', { method: 'POST' })
+                .then(() => getState());
+        }
+
+        window.onload = getState;
+    </script>
+</body>
+</html>
+
